@@ -11,10 +11,13 @@ var answer = document.querySelector('textarea#answer');
 
 var shareDeskBox  = document.querySelector('input#shareDesk');
 
+
+
+// 这里有问题
 var pcConfig = {
   'iceServers': [{
 //    'urls': 'turn:stun.al.learningrtc.cn:3478',
-    'urls': 'turn:zyccc.fun:3478',
+//     'urls': 'turn:zyccc.fun:3478',
     'credential': "root",
     'username': "root"
   }]

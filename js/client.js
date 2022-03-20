@@ -79,13 +79,14 @@ function start() {
 
         var deviceId = videoSource.value;
         var constraints = {
-            video : {
-                width: 640,
-                height: 480,
-                frameRate:15,
-                facingMode: 'enviroment',
-                deviceId : deviceId ? {exact:deviceId} : undefined
-            },
+            // video : {
+            //     width: 640,
+            //     height: 480,
+            //     frameRate:15,
+            //     facingMode: 'enviroment',
+            //     deviceId : deviceId ? {exact:deviceId} : undefined
+            // },
+            video : true,
             audio : false
         }
         navigator.mediaDevices.getDisplayMedia(constraints)

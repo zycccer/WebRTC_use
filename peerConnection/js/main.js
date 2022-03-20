@@ -1,128 +1,120 @@
 'use strict'
 
-var localVideo = document.querySelector('video#localVideo');
-var remoteVideo = document.querySelector('video#remoteVideo');
+var localVideo = document.querySelector('video#localvideo');
+var remoteVideo = document.querySelector('video#remotevideo');
+
 var btnStart = document.querySelector('button#start');
 var btnCall = document.querySelector('button#call');
-var btnHangUp= document.querySelector('button#hangup');
+var btnHangup = document.querySelector('button#hangup');
 
+var offerSdpTextarea = document.querySelector('textarea#offer');
+var answerSdpTextarea = document.querySelector('textarea#answer');
 
 var localStream;
 var pc1;
 var pc2;
 
-function gotMediaStream(stream){
+function getMediaStream(stream){
     localVideo.srcObject = stream;
     localStream = stream;
 }
 
 function handleError(err){
-    console.log("Failed to call getUserMedia", err);
+    console.error('Failed to get Media Stream!', err);
 }
 
 function start(){
-    var constraints = {
-        video: {
-            width: 640,
-            height: 480,
-            frameRate:15,
-            facingMode: 'enviroment',
-            resizeMode:true,
-        },
-        audio: false
-    }
 
     if(!navigator.mediaDevices ||
         !navigator.mediaDevices.getUserMedia){
+        console.error('the getUserMedia is not supported!');
         return;
     }else {
-        navigator.mediaDevices.getUserMedia(constraints)
-            .then(gotMediaStream)
+        var constraints = {
+            video : {
+                width: 640,
+                height: 480,
+                frameRate:15,
+            },
+            audio: false
+        }
+        navigator.mediaDevices.getDisplayMedia(constraints)
+            .then(getMediaStream)
             .catch(handleError);
-    }
 
+        btnStart.disabled = true;
+        btnCall.disabled = false;
+        btnHangup.disabled = true;
+    }
 }
 
-function gotAnswerDescription(desc){
-    pc2.setLocalDescription(desc);
+function getRemoteStream(e){
+    remoteVideo.srcObject = e.streams[0];
+}
 
-    //send sdp to caller
-    //recieve sdp from callee
+function handleOfferError(err){
+    console.error('Failed to create offer:', err);
+}
+
+function handleAnswerError(err){
+    console.error('Failed to create answer:', err);
+}
+
+function getAnswer(desc){
+    pc2.setLocalDescription(desc);
+    answerSdpTextarea.value = desc.sdp
+
+    //send desc to
+    //receive desc from signal
 
     pc1.setRemoteDescription(desc);
-
 }
 
-function gotLocalDescription(desc){
+function getOffer(desc){
     pc1.setLocalDescription(desc);
+    offerSdpTextarea.value = desc.sdp
 
-    //send sdp to callee
+    //send desc to signal
+    //receive desc from signal
 
-    //receive sdp from caller
     pc2.setRemoteDescription(desc);
-    pc2.createAnswer().then(gotAnswerDescription)
-        .catch(handleError);
-}
 
-function gotRemoteStream(e){
+    pc2.createAnswer()
+        .then(getAnswer)
+        .catch(handleAnswerError);
 
-    if(remoteVideo.srcObject !== e.streams[0]){
-        remoteVideo.srcObject = e.streams[0];
-    }
 }
 
 function call(){
-    var offerOptions = {
-        offerToReceiveAudio: 0,
-        offerToReceiveVideo: 1
+
+
+
+    pc1.onicecandidate = (e)=>{
+        pc2.addIceCandidate(e.candidate);
     }
 
-    pc1 = new RTCPeerConnection();
-    pc1.onicecandidate = (e) => {
-
-        // send candidate to peer
-        // receive candidate from peer
-
-        pc2.addIceCandidate(e.candidate)
-            .catch(handleError);
-        console.log('pc1 ICE candidate:', e.candidate);
+    pc2.onicecandidate = (e)=>{
+        pc1.addIceCandidate(e.candidate);
     }
 
-    pc1.iceconnectionstatechange = (e) => {
-        console.log(`pc1 ICE state: ${pc.iceConnectionState}`);
-        console.log('ICE state change event: ', e);
-    }
+    pc2.ontrack = getRemoteStream;
 
-
-    pc2 = new RTCPeerConnection();
-    pc2.onicecandidate = (e)=> {
-
-        // send candidate to peer
-        // receive candidate from peer
-
-        pc1.addIceCandidate(e.candidate)
-            .catch(handleError);
-        console.log('pc2 ICE candidate:', e.candidate);
-    }
-
-    pc2.iceconnectionstatechange = (e) => {
-        console.log(`pc2 ICE state: ${pc.iceConnectionState}`);
-        console.log('ICE state change event: ', e);
-    }
-
-    pc2.ontrack = gotRemoteStream;
-
-    //add Stream to caller
     localStream.getTracks().forEach((track)=>{
         pc1.addTrack(track, localStream);
     });
 
+    var offerOptions = {
+        offerToRecieveAudio: 0,
+        offerToRecieveVideo: 1
+    }
+
     pc1.createOffer(offerOptions)
-        .then(gotLocalDescription)
-        .catch(handleError);
+        .then(getOffer)
+        .catch(handleOfferError);
 
+    btnCall.disabled = true;
+    btnHangup.disabled = false;
 }
-
 
 function hangup(){
     pc1.close();
@@ -130,9 +122,10 @@ function hangup(){
     pc1 = null;
     pc2 = null;
 
+    btnCall.disabled = false;
+    btnHangup.disabled = true;
 }
 
 btnStart.onclick = start;
 btnCall.onclick = call;
-btnHangUp.onclick = hangup;
-
+btnHangup.onclick = hangup;
